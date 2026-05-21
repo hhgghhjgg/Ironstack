@@ -1,33 +1,65 @@
-# IronStack - Development Dependencies
-# ===================================
-# Testing
+# IronStack - All Dependencies
+# ======================================
+
+# ======================================
+# Core Dependencies
+# ======================================
+requests>=2.28.0
+urllib3>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+colorama>=0.4.6
+rich>=13.0.0
+click>=8.1.0
+loguru>=0.7.0
+python-dateutil>=2.8.0
+typing-extensions>=4.5.0
+
+# ======================================
+# Defense Layer Dependencies
+# ======================================
+pyarmor>=8.0.0
+pycryptodome>=3.18.0
+cryptography>=41.0.0
+certifi>=2023.0.0
+docker>=7.0.0
+
+# ======================================
+# Attack Layer Dependencies (Red Team)
+# ======================================
+frida-tools>=12.0.0
+frida>=16.0.0
+capstone>=5.0.0
+unicorn>=2.0.1
+python-nmap>=0.7.1
+scapy>=2.5.0
+pwntools>=4.11.0
+sqlmap>=1.7.0
+
+# ======================================
+# Monitoring Dependencies
+# ======================================
+psutil>=5.9.0
+
+# ======================================
+# Development & Testing Dependencies
+# ======================================
 pytest>=8.0.0
 pytest-cov>=4.1.0
 pytest-mock>=3.12.0
 pytest-asyncio>=0.23.0
 pytest-timeout>=2.2.0
 coverage>=7.4.0
-
-# Code Quality
 black>=24.0.0
 isort>=5.13.0
 flake8>=7.0.0
 mypy>=1.8.0
 pre-commit>=3.6.0
-
-# Security Linting
 bandit>=1.7.0
 safety>=3.0.0
-
-# Build and Publish
 build>=1.0.0
 twine>=5.0.0
 tox>=4.0.0
-
-# Documentation
 sphinx>=7.0.0
 sphinx-rtd-theme>=2.0.0
 myst-parser>=3.0.0
-
-# Version Control Hooks
-pre-commit>=3.6.0

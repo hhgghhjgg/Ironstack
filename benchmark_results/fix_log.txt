@@ -1,0 +1,16 @@
+=== SAFE STRUCTURE FIX ===
+
+Nested ironstack/ironstack/ found – moving contents up...
+  ⚠️ ironstack/__init__.py already exists (non‑empty) – NOT overwriting
+  🚚 Moving ironstack/ironstack/config.py → ironstack/config.py
+  🚚 Moving ironstack/ironstack/core.py → ironstack/core.py
+  ✅ ironstack/defense/ already exists – merging contents
+    🚚 Moving ironstack/ironstack/defense/bunkerweb_connector.py → ironstack/defense/bunkerweb_connector.py
+    🚚 Moving ironstack/ironstack/defense/protector.py → ironstack/defense/protector.py
+    🚚 Moving ironstack/ironstack/defense/waf.py → ironstack/defense/waf.py
+  🚚 Moving ironstack/ironstack/exceptions.py → ironstack/exceptions.py
+  🚚 Moving ironstack/ironstack/logging_config.py → ironstack/logging_config.py
+  🗑️ Removed nested ironstack/ironstack/
+  ✅ ironstack/__init__.py is non‑empty
+
+  🛠️ setup.cfg has broken lines – removing problematic section

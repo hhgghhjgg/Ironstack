@@ -1,0 +1,160 @@
+# .github/workflows/ironstack-benchmark.yml
+# ============================================
+# IronStack Automated Security Benchmark
+# Runs all available tests, calculates rates,
+# and stores the result in the main branch.
+# ============================================
+
+name: 🛡️ IronStack Security Benchmark
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'examples/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full_benchmark:
+        description: 'Run full benchmark (takes longer)'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 0 * * 0'  # Every Sunday at midnight
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  # ============================================================
+  # Job 1: WAF Benchmark (Python Engine)
+  # ============================================================
+  waf-benchmark:
+    name: "🛡️ WAF Detection Rates"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install IronStack
+        run: |
+          pip install -e ".[defense]"
+          pip install pytest
+
+      - name: Run WAF Benchmark
+        run: |
+          python -c "
+          import json
+          import time
+          from pathlib import Path
+          from ironstack.defense import WAF
+          
+          waf = WAF(engine='python', mode='normal')
+          results = {}
+          
+          # ==========================================
+          # SQL Injection Test
+          # ==========================================
+          sql_payloads = [
+              \"' OR '1'='1 --\",
+              \"' UNION SELECT NULL--\",
+              \"admin'--\",
+              \"1; DROP TABLE users--\",
+              \"' OR 1=1#\",
+              \"1' ORDER BY 1--\",
+              \"' UNION SELECT username,password FROM users--\",
+              \"'; EXEC xp_cmdshell('dir')--\",
+          ]
+          
+          sql_blocked = 0
+          for p in sql_payloads:
+              r = waf.check_request({
+                  'method': 'POST',
+                  'path': '/login',
+                  'headers': {'Content-Type': 'application/x-www-form-urlencoded'},
+                  'body': f'user={p}',
+                  'query_params': {},
+                  'ip': '10.0.0.100'
+              })
+              if not r['allowed']:
+                  sql_blocked += 1
+          
+          results['sql_injection'] = {
+              'total_payloads': len(sql_payloads),
+              'blocked': sql_blocked,
+              'detection_rate': round((sql_blocked / len(sql_payloads)) * 100, 2),
+              'missed': len(sql_payloads) - sql_blocked,
+          }
+          
+          # ==========================================
+          # XSS Test
+          # ==========================================
+          xss_payloads = [
+              '<script>alert(1)</script>',
+              '<img src=x onerror=alert(1)>',
+              'javascript:alert(1)',
+              '<svg onload=alert(1)>',
+              '<body onload=alert(1)>',
+              '<iframe src=javascript:alert(1)>',
+              '\" onmouseover=alert(1)',
+              '<scr<script>ipt>alert(1)</scr</script>ipt>',
+          ]
+          
+          xss_blocked = 0
+          for p in xss_payloads:
+              r = waf.check_request({
+                  'method': 'POST',
+                  'path': '/comment',
+                  'headers': {},
+                  'body': f'comment={p}',
+                  'query_params': {},
+                  'ip': '10.0.0.101'
+              })
+              if not r['allowed']:
+                  xss_blocked += 1
+          
+          results['xss'] = {
+              'total_payloads': len(xss_payloads),
+              'blocked': xss_blocked,
+              'detection_rate': round((xss_blocked / len(xss_payloads)) * 100, 2),
+              'missed': len(xss_payloads) - xss_blocked,
+          }
+          
+          # ==========================================
+          # Path Traversal Test
+          # ==========================================
+          path_payloads = [
+              '../../../etc/passwd',
+              '..\\\\..\\\\..\\\\windows\\\\win.ini',
+              '....//....//....//etc/passwd',
+              '%2e%2e%2f%2e%2e%2fetc%2fpasswd',
+              '..%252f..%252f..%252fetc%252fpasswd',
+          ]
+          
+          path_blocked = 0
+          for p in path_payloads:
+              r = waf.check_request({
+                  'method': 'GET',
+                  'path': '/download',
+                  'headers': {},
+                  'body': '',
+                  'query_params': {'file': p},
+                  'ip': '10.0.0.102'
+              })
+              if not r['allowed']:
+                  path_blocked += 1
+          
+  

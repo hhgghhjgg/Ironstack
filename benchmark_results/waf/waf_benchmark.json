@@ -1,9 +1,42 @@
 {
-  "import_error": "cannot import name 'WAF' from 'ironstack.defense' (unknown location)",
-  "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\nImportError: cannot import name 'WAF' from 'ironstack.defense' (unknown location)\n",
-  "errors": [
-    "Import error: cannot import name 'WAF' from 'ironstack.defense' (unknown location)"
+  "errors": [],
+  "warnings": [],
+  "import_ok": false,
+  "import_error": "cannot import name 'WAF' from 'ironstack.defense' (/home/runner/work/Ironstack/Ironstack/ironstack/defense/__init__.py)",
+  "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\nImportError: cannot import name 'WAF' from 'ironstack.defense' (/home/runner/work/Ironstack/Ironstack/ironstack/defense/__init__.py)\n",
+  "sys_path": [
+    "",
+    "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python311.zip",
+    "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11",
+    "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/lib-dynload",
+    "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages"
   ],
-  "python_version": "3.11.15 (main, Mar  3 2026, 16:10:12) [GCC 13.3.0]",
-  "timestamp": "2026-05-22 09:38:17 UTC"
+  "cwd": "/home/runner/work/Ironstack/Ironstack",
+  "files_in_cwd": [
+    "requirements.txt",
+    "benchmark_results",
+    ".git",
+    ".github",
+    "Makefile",
+    "setup.py",
+    "tests",
+    "pyproject.toml",
+    "requirements-dev.txt",
+    "setup.cfg",
+    "scripts",
+    "ironstack",
+    "README.md",
+    "examples"
+  ],
+  "files_in_ironstack": [
+    "attack",
+    "__pycache__",
+    "defense",
+    "utils",
+    "__init__.py",
+    "ironstack",
+    "cli.py"
+  ],
+  "python": "3.11.15 (main, Mar  3 2026, 16:10:12) [GCC 13.3.0]",
+  "timestamp": "2026-05-22 09:51:12 UTC"
 }

@@ -1,4 +1,5 @@
 ============================================================
 WAF BENCHMARK COMPLETE
-  Errors: 0
+Errors: 1
+  ERROR: Import error: cannot import name 'WAF' from 'ironstack.defense' (unknown location)
 ============================================================

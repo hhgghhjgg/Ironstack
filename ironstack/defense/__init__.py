@@ -50,10 +50,10 @@ except ImportError:
     BunkerWebConnector = None
 
 # ==========================================
-# Public API - Exceptions
+# Public API - Exceptions (fixed import path)
 # ==========================================
 
-from ..exceptions import (
+from ironstack.exceptions import (
     WAFError,
     WAFConfigurationError,
     WAFRuleError,

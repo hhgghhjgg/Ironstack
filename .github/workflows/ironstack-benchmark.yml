@@ -1,20 +1,19 @@
 # .github/workflows/ironstack-benchmark.yml
 # ============================================
-# IronStack Automated Security Benchmark
-# Stores ALL logs + results in `benchmark_results/`
-# on the main branch – ALWAYS, even if a job fails.
+# IronStack - AUTO-FIX paths + Benchmark
+# ============================================
+# This workflow:
+#   1. Checks & fixes the project structure
+#   2. Runs all benchmarks
+#   3. Saves ALL logs + results to `benchmark_results/` on main
+#      (even if everything fails)
 # ============================================
 
-name: 🛡️ IronStack Security Benchmark
+name: 🛡️ IronStack Full Benchmark (Auto-Fix)
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'examples/**'
-      - 'benchmark_results/**'
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -24,147 +23,326 @@ permissions:
   pull-requests: write
 
 jobs:
-  # ------------------------------------------------------------------
-  # Job 1 – WAF detection rates
-  # ------------------------------------------------------------------
-  waf-benchmark:
-    name: "🛡️ WAF Detection Rates"
+  # ==================================================================
+  # Job 0 – Auto‑fix project structure
+  # ==================================================================
+  fix-structure:
+    name: "🔧 Fix project structure"
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    outputs:
+      structure-log: ${{ steps.fix.outputs.log }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fix project structure
+        id: fix
+        run: |
+          mkdir -p benchmark_results
+
+          echo "========== PROJECT STRUCTURE FIX ==========" | tee benchmark_results/structure_fix_log.txt
+          echo "Run: $(date -u)" | tee -a benchmark_results/structure_fix_log.txt
+          echo "" | tee -a benchmark_results/structure_fix_log.txt
+
+          # --------------------------------------------------
+          # Files that MUST be in the repo ROOT (next to .git)
+          # --------------------------------------------------
+          ROOT_FILES=(
+            "setup.py"
+            "setup.cfg"
+            "pyproject.toml"
+            "requirements.txt"
+            "requirements-dev.txt"
+            "Makefile"
+            "README.md"
+            "LICENSE"
+            ".gitignore"
+            "CHANGELOG.md"
+          )
+
+          echo "Checking root files..." | tee -a benchmark_results/structure_fix_log.txt
+          for f in "${ROOT_FILES[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  ✅ ROOT/$f exists" | tee -a benchmark_results/structure_fix_log.txt
+            else
+              # Try to find it inside ironstack/ and copy to root
+              if [ -f "ironstack/$f" ]; then
+                echo "  🔄 ROOT/$f MISSING → copying from ironstack/$f" | tee -a benchmark_results/structure_fix_log.txt
+                cp "ironstack/$f" "$f"
+              else
+                echo "  ❌ ROOT/$f NOT FOUND anywhere" | tee -a benchmark_results/structure_fix_log.txt
+              fi
+            fi
+          done
+
+          # --------------------------------------------------
+          # Files that must NOT be in ironstack/ (move to root)
+          # --------------------------------------------------
+          echo "" | tee -a benchmark_results/structure_fix_log.txt
+          echo "Checking for misplaced files in ironstack/ ..." | tee -a benchmark_results/structure_fix_log.txt
+
+          MISPLACED=(
+            "ironstack/setup.py"
+            "ironstack/setup.cfg"
+            "ironstack/pyproject.toml"
+            "ironstack/requirements.txt"
+            "ironstack/requirements-dev.txt"
+            "ironstack/Makefile"
+            "ironstack/README.md"
+            "ironstack/LICENSE"
+            "ironstack/.gitignore"
+            "ironstack/CHANGELOG.md"
+          )
+
+          for f in "${MISPLACED[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  🚚 Moving $f → root" | tee -a benchmark_results/structure_fix_log.txt
+              mv "$f" .
+            fi
+          done
+
+          # --------------------------------------------------
+          # Ensure essential package folders exist
+          # --------------------------------------------------
+          echo "" | tee -a benchmark_results/structure_fix_log.txt
+          echo "Ensuring package structure..." | tee -a benchmark_results/structure_fix_log.txt
+
+          PACKAGE_DIRS=(
+            "ironstack"
+            "ironstack/defense"
+            "ironstack/defense/anti_cheat"
+            "ironstack/attack"
+            "ironstack/utils"
+            "tests"
+            "tests/test_defense"
+            "tests/test_attack"
+            "examples"
+            "docs"
+            "docs/api"
+            "scripts"
+            ".github"
+            ".github/workflows"
+          )
+
+          for d in "${PACKAGE_DIRS[@]}"; do
+            if [ -d "$d" ]; then
+              echo "  ✅ $d/ exists" | tee -a benchmark_results/structure_fix_log.txt
+            else
+              echo "  📁 $d/ MISSING → creating" | tee -a benchmark_results/structure_fix_log.txt
+              mkdir -p "$d"
+            fi
+          done
+
+          # --------------------------------------------------
+          # Ensure __init__.py files exist
+          # --------------------------------------------------
+          echo "" | tee -a benchmark_results/structure_fix_log.txt
+          echo "Ensuring __init__.py files..." | tee -a benchmark_results/structure_fix_log.txt
+
+          INIT_FILES=(
+            "ironstack/__init__.py"
+            "ironstack/defense/__init__.py"
+            "ironstack/defense/anti_cheat/__init__.py"
+            "ironstack/attack/__init__.py"
+            "ironstack/utils/__init__.py"
+            "tests/__init__.py"
+            "tests/test_defense/__init__.py"
+            "tests/test_attack/__init__.py"
+          )
+
+          for f in "${INIT_FILES[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  ✅ $f exists" | tee -a benchmark_results/structure_fix_log.txt
+            else
+              echo "  📄 $f MISSING → creating empty init" | tee -a benchmark_results/structure_fix_log.txt
+              touch "$f"
+            fi
+          done
+
+          # --------------------------------------------------
+          # Commit the fixes (if any)
+          # --------------------------------------------------
+          echo "" | tee -a benchmark_results/structure_fix_log.txt
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected – committing fixes" | tee -a benchmark_results/structure_fix_log.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "🔧 Auto‑fix project structure [skip ci]" || true
+            git push origin main || echo "Push failed (may be expected on PR)"
+            echo "  ✅ Fixes committed" | tee -a benchmark_results/structure_fix_log.txt
+          else
+            echo "  ✅ No structural issues found" | tee -a benchmark_results/structure_fix_log.txt
+          fi
+
+          echo "" | tee -a benchmark_results/structure_fix_log.txt
+          echo "========== STRUCTURE FIX COMPLETE ==========" | tee -a benchmark_results/structure_fix_log.txt
+
+      - name: Upload structure log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: structure-fix
+          path: benchmark_results/structure_fix_log.txt
+          retention-days: 30
+
+  # ==================================================================
+  # Job 1 – WAF Benchmark
+  # ==================================================================
+  waf-benchmark:
+    name: "🛡️ WAF Benchmark"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: fix-structure
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Create results folder
+        run: mkdir -p benchmark_results
+
       - name: Install IronStack
         run: |
-          pip install -e ".[defense]" 2>&1 | tee benchmark_results/waf_install_log.txt || true
+          echo "=== Install Log ===" > benchmark_results/waf_install_log.txt
+          pip install -e ".[defense]" 2>&1 | tee -a benchmark_results/waf_install_log.txt || true
 
       - name: Run WAF benchmark
         run: |
-          mkdir -p benchmark_results
           python -c "
-          import json, time, sys, traceback
+          import json, time, sys, traceback, os
           from pathlib import Path
 
-          results = {}
-          errors = []
-
+          results = {'errors':[], 'warnings':[]}
+          
+          # --- Try to import ---
           try:
               from ironstack.defense import WAF
               waf = WAF(engine='python', mode='normal')
+              results['import_ok'] = True
           except Exception as e:
-              errors.append(f'Import error: {e}')
+              results['import_ok'] = False
               results['import_error'] = str(e)
               results['traceback'] = traceback.format_exc()
+              results['sys_path'] = sys.path
+              results['cwd'] = os.getcwd()
+              results['files_in_cwd'] = os.listdir('.')
+              if os.path.exists('ironstack'):
+                  results['files_in_ironstack'] = os.listdir('ironstack')
 
-          if 'import_error' not in results:
+          if results.get('import_ok'):
+              # SQLi
               try:
                   sql = [\"' OR '1'='1 --\",\"' UNION SELECT NULL--\",\"admin'--\",\"1; DROP TABLE users--\",\"' OR 1=1#\",\"1' ORDER BY 1--\"]
-                  results['sql_injection'] = {'total':len(sql),'blocked':0}
+                  r = {'total':len(sql),'blocked':0}
                   for p in sql:
-                      r = waf.check_request({'method':'POST','path':'/login','headers':{},'body':f'user={p}','query_params':{},'ip':'10.0.0.100'})
-                      if not r['allowed']: results['sql_injection']['blocked']+=1
-                  results['sql_injection']['detection_rate'] = round(results['sql_injection']['blocked']/len(sql)*100,2)
+                      res = waf.check_request({'method':'POST','path':'/login','headers':{},'body':f'user={p}','query_params':{},'ip':'10.0.0.100'})
+                      if not res['allowed']: r['blocked']+=1
+                  r['detection_rate'] = round(r['blocked']/len(sql)*100,2)
+                  results['sql_injection'] = r
               except Exception as e:
-                  errors.append(f'SQLi test error: {e}')
+                  results['errors'].append(f'SQLi: {e}')
 
+              # XSS
               try:
                   xss = ['<script>alert(1)</script>','<img src=x onerror=alert(1)>','javascript:alert(1)','<svg onload=alert(1)>','<body onload=alert(1)>','<iframe src=javascript:alert(1)>']
-                  results['xss'] = {'total':len(xss),'blocked':0}
+                  r = {'total':len(xss),'blocked':0}
                   for p in xss:
-                      r = waf.check_request({'method':'POST','path':'/comment','headers':{},'body':f'comment={p}','query_params':{},'ip':'10.0.0.101'})
-                      if not r['allowed']: results['xss']['blocked']+=1
-                  results['xss']['detection_rate'] = round(results['xss']['blocked']/len(xss)*100,2)
+                      res = waf.check_request({'method':'POST','path':'/comment','headers':{},'body':f'c={p}','query_params':{},'ip':'10.0.0.101'})
+                      if not res['allowed']: r['blocked']+=1
+                  r['detection_rate'] = round(r['blocked']/len(xss)*100,2)
+                  results['xss'] = r
               except Exception as e:
-                  errors.append(f'XSS test error: {e}')
+                  results['errors'].append(f'XSS: {e}')
 
+              # Path Traversal
               try:
-                  path = ['../../../etc/passwd','..\\\\..\\\\..\\\\windows\\\\win.ini','%2e%2e%2f%2e%2e%2fetc%2fpasswd']
-                  results['path_traversal'] = {'total':len(path),'blocked':0}
-                  for p in path:
-                      r = waf.check_request({'method':'GET','path':'/download','headers':{},'body':'','query_params':{'file':p},'ip':'10.0.0.102'})
-                      if not r['allowed']: results['path_traversal']['blocked']+=1
-                  results['path_traversal']['detection_rate'] = round(results['path_traversal']['blocked']/len(path)*100,2)
+                  pt = ['../../../etc/passwd','..\\\\..\\\\..\\\\windows\\\\win.ini','%2e%2e%2f%2e%2e%2fetc%2fpasswd']
+                  r = {'total':len(pt),'blocked':0}
+                  for p in pt:
+                      res = waf.check_request({'method':'GET','path':'/dl','headers':{},'body':'','query_params':{'f':p},'ip':'10.0.0.102'})
+                      if not res['allowed']: r['blocked']+=1
+                  r['detection_rate'] = round(r['blocked']/len(pt)*100,2)
+                  results['path_traversal'] = r
               except Exception as e:
-                  errors.append(f'Path traversal test error: {e}')
+                  results['errors'].append(f'PathTraversal: {e}')
 
+              # Command Injection
               try:
                   cmd = ['127.0.0.1; cat /etc/passwd','127.0.0.1 | ls -la','\$(whoami)','\`id\`']
-                  results['command_injection'] = {'total':len(cmd),'blocked':0}
+                  r = {'total':len(cmd),'blocked':0}
                   for p in cmd:
-                      r = waf.check_request({'method':'GET','path':'/ping','headers':{},'body':'','query_params':{'host':p},'ip':'10.0.0.103'})
-                      if not r['allowed']: results['command_injection']['blocked']+=1
-                  results['command_injection']['detection_rate'] = round(results['command_injection']['blocked']/len(cmd)*100,2)
+                      res = waf.check_request({'method':'GET','path':'/ping','headers':{},'body':'','query_params':{'h':p},'ip':'10.0.0.103'})
+                      if not res['allowed']: r['blocked']+=1
+                  r['detection_rate'] = round(r['blocked']/len(cmd)*100,2)
+                  results['command_injection'] = r
               except Exception as e:
-                  errors.append(f'CMDi test error: {e}')
+                  results['errors'].append(f'CMDi: {e}')
 
+              # Scanner
               try:
                   uas = ['sqlmap/1.6#stable','Nikto/2.1.6','Nessus','Burp Suite Professional','Acunetix-Deepscan']
-                  results['scanner_detection'] = {'total':len(uas),'blocked':0}
-                  for ua in uas:
-                      r = waf.check_request({'method':'GET','path':'/','headers':{'User-Agent':ua},'body':'','query_params':{},'ip':'10.0.0.104'})
-                      if not r['allowed']: results['scanner_detection']['blocked']+=1
-                  results['scanner_detection']['detection_rate'] = round(results['scanner_detection']['blocked']/len(uas)*100,2)
+                  r = {'total':len(uas),'blocked':0}
+                  for u in uas:
+                      res = waf.check_request({'method':'GET','path':'/','headers':{'User-Agent':u},'body':'','query_params':{},'ip':'10.0.0.104'})
+                      if not res['allowed']: r['blocked']+=1
+                  r['detection_rate'] = round(r['blocked']/len(uas)*100,2)
+                  results['scanner_detection'] = r
               except Exception as e:
-                  errors.append(f'Scanner detection error: {e}')
+                  results['errors'].append(f'Scanner: {e}')
 
+              # False Positives
               try:
-                  normal = [{'method':'GET','path':'/home'},{'method':'POST','path':'/login','body':'user=john&pass=secret'}]
-                  results['false_positives'] = {'total':len(normal),'blocked':0}
+                  normal = [{'m':'GET','p':'/home'},{'m':'POST','p':'/login','b':'user=john&pass=secret'}]
+                  r = {'total':len(normal),'blocked':0}
                   for n in normal:
-                      r = waf.check_request({'method':n['method'],'path':n['path'],'headers':{},'body':n.get('body',''),'query_params':{},'ip':'192.168.1.50'})
-                      if not r['allowed']: results['false_positives']['blocked']+=1
-                  results['false_positives']['fp_rate'] = round(results['false_positives']['blocked']/len(normal)*100,2)
+                      res = waf.check_request({'method':n['m'],'path':n['p'],'headers':{},'body':n.get('b',''),'query_params':{},'ip':'192.168.1.50'})
+                      if not res['allowed']: r['blocked']+=1
+                  r['fp_rate'] = round(r['blocked']/len(normal)*100,2)
+                  results['false_positives'] = r
               except Exception as e:
-                  errors.append(f'FP test error: {e}')
+                  results['errors'].append(f'FP: {e}')
 
+              # Performance
               try:
                   start = time.perf_counter()
                   for i in range(100):
-                      waf.check_request({'method':'GET','path':'/test','headers':{},'body':'','query_params':{'p':'v'},'ip':f'192.168.1.{i%255}'})
+                      waf.check_request({'method':'GET','path':'/t','headers':{},'body':'','query_params':{'p':'v'},'ip':f'192.168.1.{i%255}'})
                   elapsed = time.perf_counter()-start
                   results['performance'] = {'requests':100,'elapsed':round(elapsed,3),'rps':round(100/elapsed,2),'avg_latency_ms':round(elapsed/100*1000,2)}
               except Exception as e:
-                  errors.append(f'Performance test error: {e}')
+                  results['errors'].append(f'Perf: {e}')
 
-              try:
-                  rates = [results[k]['detection_rate'] for k in ['sql_injection','xss','path_traversal','command_injection','scanner_detection'] if k in results]
-                  if rates:
-                      avg = round(sum(rates)/len(rates),2)
-                      fp_rate = results.get('false_positives',{}).get('fp_rate',0)
-                      rps = results.get('performance',{}).get('rps',0)
-                      results['overall'] = {'detection_rate':avg,'fp_rate':fp_rate,'rps':rps,'grade':'A' if avg>=95 else 'B' if avg>=85 else 'C' if avg>=70 else 'D'}
-              except Exception as e:
-                  errors.append(f'Overall calculation error: {e}')
+              # Overall
+              keys = ['sql_injection','xss','path_traversal','command_injection','scanner_detection']
+              rates = [results[k]['detection_rate'] for k in keys if k in results]
+              if rates:
+                  avg = round(sum(rates)/len(rates),2)
+                  fp = results.get('false_positives',{}).get('fp_rate',0)
+                  rps = results.get('performance',{}).get('rps',0)
+                  results['overall'] = {'detection_rate':avg,'fp_rate':fp,'rps':rps,'grade':'A' if avg>=95 else 'B' if avg>=85 else 'C' if avg>=70 else 'D'}
 
-          results['errors'] = errors
-          results['python_version'] = sys.version
+          results['python'] = sys.version
           results['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+          results['cwd'] = os.getcwd()
 
           with open('benchmark_results/waf_benchmark.json','w') as f:
-              json.dump(results, f, indent=2)
+              json.dump(results, f, indent=2, default=str)
 
-          print('=' * 60)
+          print('='*60)
           print('WAF BENCHMARK COMPLETE')
-          print(f'Errors: {len(errors)}')
+          print(f'  Errors: {len(results[\"errors\"])}')
           if results.get('overall'):
-              print(f'Grade: {results[\"overall\"][\"grade\"]}')
-              print(f'Detection: {results[\"overall\"][\"detection_rate\"]}%')
-          if errors:
-              for e in errors:
-                  print(f'  ERROR: {e}')
-          print('=' * 60)
+              print(f'  Grade: {results[\"overall\"][\"grade\"]} | Detection: {results[\"overall\"][\"detection_rate\"]}%')
+          for e in results['errors']:
+              print(f'  ❌ {e}')
+          print('='*60)
           " 2>&1 | tee benchmark_results/waf_run_log.txt || true
-
-      - name: Save WAF files to main
-        if: always()
-        run: |
-          mkdir -p benchmark_results
-          cp -r benchmark_results /tmp/waf_results/ || true
-          echo "WAF job completed at $(date)" > benchmark_results/waf_status.txt
 
       - name: Upload WAF artifact
         if: always()
@@ -174,70 +352,78 @@ jobs:
           path: benchmark_results/
           retention-days: 30
 
-  # ------------------------------------------------------------------
-  # Job 2 – Unit tests + coverage
-  # ------------------------------------------------------------------
+  # ==================================================================
+  # Job 2 – Unit Tests
+  # ==================================================================
   unit-tests:
     name: "🧪 Unit Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: fix-structure
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Create results folder
+        run: mkdir -p benchmark_results
+
       - name: Install IronStack
         run: |
-          mkdir -p benchmark_results
-          pip install -e ".[full]" 2>&1 | tee benchmark_results/test_install_log.txt || true
+          echo "=== Install Log ===" > benchmark_results/test_install_log.txt
+          pip install -e ".[full]" 2>&1 | tee -a benchmark_results/test_install_log.txt || true
           pip install pytest pytest-cov 2>&1 | tee -a benchmark_results/test_install_log.txt || true
 
       - name: Run tests
         run: |
-          mkdir -p benchmark_results
-          pytest tests/ -v --tb=long --cov=ironstack --cov-report=json --cov-report=term --ignore=tests/test_attack/test_hooker.py --ignore=tests/test_attack/test_disassembler.py --ignore=tests/test_attack/test_emulator.py -m "not integration" 2>&1 | tee benchmark_results/test_run_log.txt || true
+          pytest tests/ \
+            -v --tb=long \
+            --cov=ironstack --cov-report=json --cov-report=term \
+            --ignore=tests/test_attack/test_hooker.py \
+            --ignore=tests/test_attack/test_disassembler.py \
+            --ignore=tests/test_attack/test_emulator.py \
+            -m "not integration" \
+            2>&1 | tee benchmark_results/test_run_log.txt || true
 
       - name: Parse test results
-        if: always()
         run: |
           python -c "
-          import json, re, sys, traceback
+          import json, re
           from pathlib import Path
 
           result = {'passed':0,'failed':0,'errors':0,'coverage':0,'total':0,'errors_list':[]}
 
-          try:
-              cov_path = Path('coverage.json')
-              if cov_path.exists():
-                  with open(cov_path) as f:
-                      cov = json.load(f)
-                      result['coverage'] = round(cov.get('totals',{}).get('percent_covered',0),2)
-          except Exception as e:
-              result['errors_list'].append(f'Coverage parse error: {e}')
+          cov_file = Path('coverage.json')
+          if cov_file.exists():
+              with open(cov_file) as f:
+                  cov = json.load(f)
+                  result['coverage'] = round(cov.get('totals',{}).get('percent_covered',0),2)
 
-          try:
-              output = Path('benchmark_results/test_run_log.txt')
-              if output.exists():
-                  text = output.read_text()
-                  m = re.search(r'(\d+) passed', text)
-                  if m: result['passed'] = int(m.group(1))
-                  m = re.search(r'(\d+) failed', text)
-                  if m: result['failed'] = int(m.group(1))
-                  m = re.search(r'(\d+) errors', text)
-                  if m: result['errors'] = int(m.group(1))
-          except Exception as e:
-              result['errors_list'].append(f'Test parse error: {e}')
+          log_file = Path('benchmark_results/test_run_log.txt')
+          if log_file.exists():
+              text = log_file.read_text()
+              m = re.search(r'(\d+) passed', text)
+              if m: result['passed'] = int(m.group(1))
+              m = re.search(r'(\d+) failed', text)
+              if m: result['failed'] = int(m.group(1))
+              m = re.search(r'(\d+) errors', text)
+              if m: result['errors'] = int(m.group(1))
 
           result['total'] = result['passed'] + result['failed'] + result['errors']
-          result['timestamp'] = __import__('time').strftime('%Y-%m-%d %H:%M:%S UTC', __import__('time').gmtime())
+
+          import time
+          result['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
 
           with open('benchmark_results/unit_tests.json','w') as f:
               json.dump(result, f, indent=2)
 
           print(f'Tests: {result[\"passed\"]}/{result[\"total\"]} passed | Coverage: {result[\"coverage\"]}%')
-          " 2>&1 | tee -a benchmark_results/test_parse_log.txt || true
+          " 2>&1 | tee benchmark_results/test_parse_log.txt || true
 
       - name: Upload test artifact
         if: always()
@@ -247,11 +433,11 @@ jobs:
           path: benchmark_results/
           retention-days: 30
 
-  # ------------------------------------------------------------------
-  # Job 3 – Combine EVERYTHING and push to main (ALWAYS)
-  # ------------------------------------------------------------------
+  # ==================================================================
+  # Job 3 – Combine & Save to Main
+  # ==================================================================
   save-results:
-    name: "📊 Save ALL results to main"
+    name: "📊 Save to Main"
     runs-on: ubuntu-latest
     needs: [waf-benchmark, unit-tests]
     if: always()
@@ -261,8 +447,8 @@ jobs:
           ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create results directory
-        run: mkdir -p benchmark_results
+      - name: Create folders
+        run: mkdir -p benchmark_results/waf benchmark_results/tests
 
       - name: Download WAF artifact
         uses: actions/download-artifact@v4
@@ -278,18 +464,7 @@ jobs:
           path: benchmark_results/tests/
         continue-on-error: true
 
-      - name: Copy workflow logs
-        run: |
-          echo "Workflow URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > benchmark_results/workflow_info.txt
-          echo "Run ID: ${{ github.run_id }}" >> benchmark_results/workflow_info.txt
-          echo "Commit: ${{ github.sha }}" >> benchmark_results/workflow_info.txt
-          echo "Branch: ${{ github.ref_name }}" >> benchmark_results/workflow_info.txt
-          echo "Event: ${{ github.event_name }}" >> benchmark_results/workflow_info.txt
-          echo "Timestamp: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> benchmark_results/workflow_info.txt
-          echo "WAF job status: ${{ needs.waf-benchmark.result }}" >> benchmark_results/workflow_info.txt
-          echo "Test job status: ${{ needs.unit-tests.result }}" >> benchmark_results/workflow_info.txt
-
-      - name: Combine all results
+      - name: Combine results
         run: |
           python -c "
           import json
@@ -300,108 +475,65 @@ jobs:
               'timestamp': datetime.utcnow().isoformat(),
               'commit': '${{ github.sha }}',
               'branch': '${{ github.ref_name }}',
-              'run_id': '${{ github.run_id }}',
               'run_url': '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
-              'waf_job_status': '${{ needs.waf-benchmark.result }}',
-              'test_job_status': '${{ needs.unit-tests.result }}',
-              'waf': {},
-              'unit_tests': {},
-              'overall_status': 'UNKNOWN'
+              'waf_job': '${{ needs.waf-benchmark.result }}',
+              'test_job': '${{ needs.unit-tests.result }}',
           }
 
-          # Load WAF results
-          waf_json = Path('benchmark_results/waf/waf_benchmark.json')
-          if waf_json.exists():
-              with open(waf_json) as f:
+          # WAF
+          waf_path = Path('benchmark_results/waf/waf_benchmark.json')
+          if waf_path.exists():
+              with open(waf_path) as f:
                   report['waf'] = json.load(f)
-                  waf_grade = report['waf'].get('overall',{}).get('grade','?')
           else:
-              report['waf'] = {'error': 'No waf_benchmark.json found', 'files_in_artifact': [str(p) for p in Path('benchmark_results/waf').rglob('*')]}
+              report['waf'] = {'error': 'No results', 'files': [str(p) for p in Path('benchmark_results/waf').rglob('*')]}
 
-          # Load test results
-          test_json = Path('benchmark_results/tests/unit_tests.json')
-          if test_json.exists():
-              with open(test_json) as f:
+          # Tests
+          test_path = Path('benchmark_results/tests/unit_tests.json')
+          if test_path.exists():
+              with open(test_path) as f:
                   report['unit_tests'] = json.load(f)
           else:
-              report['unit_tests'] = {'error': 'No unit_tests.json found', 'files_in_artifact': [str(p) for p in Path('benchmark_results/tests').rglob('*')]}
+              report['unit_tests'] = {'error': 'No results', 'files': [str(p) for p in Path('benchmark_results/tests').rglob('*')]}
 
-          # Determine overall status
+          # Overall
           waf_ok = report['waf'].get('overall',{}).get('grade') in ('A','B')
-          tests_ok = report['unit_tests'].get('failed',0) == 0
-          has_results = bool(report['waf'].get('overall') and report['unit_tests'].get('total',0) > 0)
-
-          if has_results:
-              report['overall_status'] = 'PASS' if (waf_ok and tests_ok) else 'FAIL'
-          elif report['waf_job_status'] == 'failure' or report['test_job_status'] == 'failure':
-              report['overall_status'] = 'FAIL'
-          else:
-              report['overall_status'] = 'UNKNOWN'
+          tests_ok = report['unit_tests'].get('failed',0) == 0 and report['unit_tests'].get('total',0) > 0
+          report['overall_status'] = 'PASS' if (waf_ok and tests_ok) else 'FAIL'
 
           with open('benchmark_results/report.json','w') as f:
               json.dump(report, f, indent=2)
 
-          print('=' * 60)
-          print('FINAL REPORT')
-          print('=' * 60)
           print(json.dumps(report, indent=2, default=str))
-          print('=' * 60)
           "
 
-      - name: Commit and push ALL results to main
+      - name: Push results to main
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Add everything in benchmark_results/
           git add benchmark_results/
-          
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
           else
-            git commit -m "📊 Update benchmark results [WAF:${{ needs.waf-benchmark.result }}|Tests:${{ needs.unit-tests.result }}] [skip ci]"
-            git push origin main
-            echo "Results pushed to main branch"
+            git commit -m "📊 Benchmark [WAF:${{ needs.waf-benchmark.result }}|Tests:${{ needs.unit-tests.result }}] [skip ci]"
+            git push origin main || echo "Push failed (OK for PR)"
           fi
 
-      - name: Post PR comment
+      - name: PR comment
         if: github.event_name == 'pull_request' && always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const reportPath = 'benchmark_results/report.json';
-            if (!fs.existsSync(reportPath)) {
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '## ⚠️ Benchmark failed - no report generated\n\nCheck workflow logs: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId
-              });
-              return;
-            }
-            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-            const waf = report.waf?.overall || {};
-            const tests = report.unit_tests || {};
-            const body = `
-            ## 🛡️ IronStack Benchmark Results
-
-            | Metric | Value |
-            |--------|-------|
-            | WAF Detection | ${waf.detection_rate || 'N/A'}% |
-            | WAF Grade | ${waf.grade || 'N/A'} |
-            | False Positives | ${report.waf?.false_positives?.fp_rate || 'N/A'}% |
-            | Performance | ${waf.rps || 'N/A'} req/s |
-            | Tests Passed | ${tests.passed || 0}/${tests.total || 0} |
-            | Coverage | ${tests.coverage || 0}% |
-            | **Overall** | **${report.overall_status}** |
-
-            [View full report](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/main/benchmark_results/report.json)
-            `;
+            const p = 'benchmark_results/report.json';
+            if (!fs.existsSync(p)) return;
+            const r = JSON.parse(fs.readFileSync(p,'utf8'));
+            const w = r.waf?.overall || {};
+            const t = r.unit_tests || {};
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body
+              body: `## 🛡️ IronStack Benchmark\n| Metric | Value |\n|--------|-------|\n| WAF Detection | ${w.detection_rate||'N/A'}% |\n| WAF Grade | ${w.grade||'N/A'} |\n| Performance | ${w.rps||'N/A'} req/s |\n| Tests | ${t.passed||0}/${t.total||0} |\n| Coverage | ${t.coverage||0}% |\n| **Overall** | **${r.overall_status}** |\n\n[📄 Full Report](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/main/benchmark_results/report.json)`
             });

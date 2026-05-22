@@ -1,0 +1,9 @@
+{
+  "import_error": "cannot import name 'WAF' from 'ironstack.defense' (unknown location)",
+  "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\nImportError: cannot import name 'WAF' from 'ironstack.defense' (unknown location)\n",
+  "errors": [
+    "Import error: cannot import name 'WAF' from 'ironstack.defense' (unknown location)"
+  ],
+  "python_version": "3.11.15 (main, Mar  3 2026, 16:10:12) [GCC 13.3.0]",
+  "timestamp": "2026-05-22 09:38:17 UTC"
+}

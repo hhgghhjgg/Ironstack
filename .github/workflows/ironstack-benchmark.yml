@@ -1,6 +1,6 @@
-# .github/workflows/ironstack-benchmark.yml
+# .github/workflows/ironstack-full-benchmark.yml
 # ============================================
-# IronStack FULL Benchmark – All-in-One
+# IronStack COMPLETE Benchmark – ALL Modules
 # Saves EVERYTHING in ONE file: benchmark_results/benchmark_report.json
 # Works whether jobs PASS or FAIL
 # ============================================
@@ -19,10 +19,10 @@ permissions:
   pull-requests: write
 
 jobs:
-  benchmark:
-    name: "📊 Complete Benchmark"
+  full-benchmark:
+    name: "📊 Complete Module Benchmark"
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout code
@@ -38,9 +38,9 @@ jobs:
         run: mkdir -p benchmark_results
 
       # ================================================================
-      # STEP 1: Full system info log
+      # STEP 0: System Info
       # ================================================================
-      - name: System info
+      - name: System Info
         run: |
           echo "=== SYSTEM INFO ===" > benchmark_results/full_log.txt
           echo "Timestamp: $(date -u)" >> benchmark_results/full_log.txt
@@ -49,46 +49,22 @@ jobs:
           echo "Run ID: ${{ github.run_id }}" >> benchmark_results/full_log.txt
           echo "Python: $(python3 --version)" >> benchmark_results/full_log.txt
           echo "Pip: $(pip --version)" >> benchmark_results/full_log.txt
-          echo "" >> benchmark_results/full_log.txt
 
       # ================================================================
-      # STEP 2: Project structure check
-      # ================================================================
-      - name: Check project structure
-        run: |
-          echo "=== PROJECT STRUCTURE ===" >> benchmark_results/full_log.txt
-          echo "Working directory: $(pwd)" >> benchmark_results/full_log.txt
-          echo "" >> benchmark_results/full_log.txt
-          echo "Root files:" >> benchmark_results/full_log.txt
-          ls -la *.py *.cfg *.toml *.txt *.md Makefile 2>/dev/null >> benchmark_results/full_log.txt || echo "  (some missing)" >> benchmark_results/full_log.txt
-          echo "" >> benchmark_results/full_log.txt
-          echo "Package directory:" >> benchmark_results/full_log.txt
-          find ironstack -type f -name "*.py" 2>/dev/null | sort >> benchmark_results/full_log.txt || echo "  ironstack/ NOT FOUND" >> benchmark_results/full_log.txt
-          echo "" >> benchmark_results/full_log.txt
-          echo "Test directory:" >> benchmark_results/full_log.txt
-          find tests -type f -name "*.py" 2>/dev/null | sort >> benchmark_results/full_log.txt || echo "  tests/ NOT FOUND" >> benchmark_results/full_log.txt
-
-      # ================================================================
-      # STEP 3: Install IronStack (NEVER stop on error)
+      # STEP 1: Install IronStack with ALL dependencies
       # ================================================================
       - name: Install IronStack
         run: |
           echo "" >> benchmark_results/full_log.txt
           echo "=== INSTALLATION ===" >> benchmark_results/full_log.txt
           set +e
-          pip install -e ".[defense]" 2>&1 | tee -a benchmark_results/full_log.txt
-          INSTALL_EXIT=$?
+          pip install -e ".[full]" 2>&1 | tee -a benchmark_results/full_log.txt
+          echo "Install exit code: $?" >> benchmark_results/full_log.txt
           set -e
-          echo "Install exit code: $INSTALL_EXIT" >> benchmark_results/full_log.txt
-          if [ $INSTALL_EXIT -ne 0 ]; then
-            echo "❌ INSTALLATION FAILED" >> benchmark_results/full_log.txt
-          else
-            echo "✅ Installation successful" >> benchmark_results/full_log.txt
-          fi
         continue-on-error: true
 
       # ================================================================
-      # STEP 4: WAF Benchmark
+      # STEP 2: WAF Benchmark (SQLi, XSS, Path Traversal, CMDi, Scanner, FP, Perf)
       # ================================================================
       - name: WAF Benchmark
         run: |
@@ -97,123 +73,413 @@ jobs:
           set +e
           python3 -c "
           import json, time, sys, traceback, os
-          
-          results = {
-              'import_ok': False,
-              'import_error': '',
-              'traceback': '',
-              'sys_path': sys.path,
-              'cwd': os.getcwd(),
-          }
-          
+
+          results = {'status': 'unknown', 'errors': []}
+
           try:
               from ironstack.defense import WAF
               waf = WAF(engine='python', mode='normal')
-              results['import_ok'] = True
-          except Exception as e:
-              results['import_error'] = str(e)
-              results['traceback'] = traceback.format_exc()
-          
-          if results.get('import_ok'):
-              test_cases = {
-                  'sql_injection': [\"' OR '1'='1 --\",\"' UNION SELECT NULL--\",\"admin'--\",\"1; DROP TABLE users--\",\"' OR 1=1#\",\"1' ORDER BY 1--\"],
-                  'xss': ['<script>alert(1)</script>','<img src=x onerror=alert(1)>','javascript:alert(1)','<svg onload=alert(1)>','<body onload=alert(1)>','<iframe src=javascript:alert(1)>'],
-                  'path_traversal': ['../../../etc/passwd','..\\\\\\\\..\\\\\\\\..\\\\\\\\windows\\\\\\\\win.ini','%2e%2e%2f%2e%2e%2fetc%2fpasswd'],
-                  'command_injection': ['127.0.0.1; cat /etc/passwd','127.0.0.1 | ls -la','\$(whoami)','\`id\`'],
-              }
-              
-              for category, payloads in test_cases.items():
-                  r = {'total':len(payloads),'blocked':0,'missed':[]}
-                  for p in payloads:
-                      resp = waf.check_request({
-                          'method':'POST','path':'/test','headers':{},
-                          'body':f'input={p}','query_params':{},'ip':'10.0.0.100'
-                      })
-                      if not resp['allowed']:
-                          r['blocked'] += 1
-                      else:
-                          r['missed'].append(p)
-                  r['detection_rate'] = round(r['blocked']/len(payloads)*100,2) if payloads else 0
-                  results[category] = r
-              
-              # Scanner detection
+              results['engine'] = 'python'
+
+              # ----- SQL Injection -----
+              sql = [\"' OR '1'='1 --\",\"' UNION SELECT NULL--\",\"admin'--\",\"1; DROP TABLE users--\",\"' OR 1=1#\",\"1' ORDER BY 1--\"]
+              r = {'total':len(sql),'blocked':0,'missed':[]}
+              for p in sql:
+                  resp = waf.check_request({'method':'POST','path':'/login','headers':{},'body':f'user={p}','query_params':{},'ip':'10.0.0.1'})
+                  if not resp['allowed']: r['blocked']+=1
+                  else: r['missed'].append(p)
+              r['detection_rate'] = round(r['blocked']/len(sql)*100,2) if sql else 0
+              results['sql_injection'] = r
+
+              # ----- XSS -----
+              xss = ['<script>alert(1)</script>','<img src=x onerror=alert(1)>','javascript:alert(1)','<svg onload=alert(1)>','<body onload=alert(1)>','<iframe src=javascript:alert(1)>']
+              r = {'total':len(xss),'blocked':0,'missed':[]}
+              for p in xss:
+                  resp = waf.check_request({'method':'POST','path':'/comment','headers':{},'body':f'c={p}','query_params':{},'ip':'10.0.0.2'})
+                  if not resp['allowed']: r['blocked']+=1
+                  else: r['missed'].append(p)
+              r['detection_rate'] = round(r['blocked']/len(xss)*100,2) if xss else 0
+              results['xss'] = r
+
+              # ----- Path Traversal -----
+              pt = ['../../../etc/passwd','..\\\\..\\\\..\\\\windows\\\\win.ini','%2e%2e%2f%2e%2e%2fetc%2fpasswd']
+              r = {'total':len(pt),'blocked':0,'missed':[]}
+              for p in pt:
+                  resp = waf.check_request({'method':'GET','path':'/dl','headers':{},'body':'','query_params':{'f':p},'ip':'10.0.0.3'})
+                  if not resp['allowed']: r['blocked']+=1
+                  else: r['missed'].append(p)
+              r['detection_rate'] = round(r['blocked']/len(pt)*100,2) if pt else 0
+              results['path_traversal'] = r
+
+              # ----- Command Injection -----
+              cmd = ['127.0.0.1; cat /etc/passwd','127.0.0.1 | ls -la','\$(whoami)','\`id\`']
+              r = {'total':len(cmd),'blocked':0,'missed':[]}
+              for p in cmd:
+                  resp = waf.check_request({'method':'GET','path':'/ping','headers':{},'body':'','query_params':{'h':p},'ip':'10.0.0.4'})
+                  if not resp['allowed']: r['blocked']+=1
+                  else: r['missed'].append(p)
+              r['detection_rate'] = round(r['blocked']/len(cmd)*100,2) if cmd else 0
+              results['command_injection'] = r
+
+              # ----- Scanner Detection -----
               scanners = ['sqlmap/1.6#stable','Nikto/2.1.6','Nessus','Burp Suite Professional','Acunetix-Deepscan']
               r = {'total':len(scanners),'blocked':0,'missed':[]}
               for ua in scanners:
-                  resp = waf.check_request({
-                      'method':'GET','path':'/','headers':{'User-Agent':ua},
-                      'body':'','query_params':{},'ip':'10.0.0.200'
-                  })
-                  if not resp['allowed']:
-                      r['blocked'] += 1
-                  else:
-                      r['missed'].append(ua)
+                  resp = waf.check_request({'method':'GET','path':'/','headers':{'User-Agent':ua},'body':'','query_params':{},'ip':'10.0.0.5'})
+                  if not resp['allowed']: r['blocked']+=1
+                  else: r['missed'].append(ua)
               r['detection_rate'] = round(r['blocked']/len(scanners)*100,2) if scanners else 0
               results['scanner_detection'] = r
-              
-              # False positives
-              normal_reqs = [
+
+              # ----- False Positives -----
+              normal = [
                   {'m':'GET','p':'/home','b':''},
                   {'m':'GET','p':'/about','b':''},
                   {'m':'POST','p':'/login','b':'user=john&pass=secret123'},
                   {'m':'GET','p':'/api/v1/users?id=42','b':''},
-                  {'m':'GET','p':'/products','b':''},
+                  {'m':'GET','p':'/products?category=books','b':''},
               ]
-              r = {'total':len(normal_reqs),'blocked':0}
-              for n in normal_reqs:
-                  resp = waf.check_request({
-                      'method':n['m'],'path':n['p'],'headers':{},
-                      'body':n.get('b',''),'query_params':{},'ip':'192.168.1.50'
-                  })
-                  if not resp['allowed']:
-                      r['blocked'] += 1
-              r['fp_rate'] = round(r['blocked']/len(normal_reqs)*100,2) if normal_reqs else 0
+              r = {'total':len(normal),'blocked':0}
+              for n in normal:
+                  resp = waf.check_request({'method':n['m'],'path':n['p'],'headers':{},'body':n.get('b',''),'query_params':{},'ip':'192.168.1.50'})
+                  if not resp['allowed']: r['blocked']+=1
+              r['fp_rate'] = round(r['blocked']/len(normal)*100,2) if normal else 0
               results['false_positives'] = r
-              
-              # Performance
+
+              # ----- Performance -----
               start = time.perf_counter()
-              for i in range(100):
-                  waf.check_request({
-                      'method':'GET','path':'/test','headers':{},
-                      'body':'','query_params':{},'ip':f'192.168.1.{i%255}'
-                  })
-              elapsed = time.perf_counter() - start
+              for i in range(200):
+                  waf.check_request({'method':'GET','path':'/test','headers':{},'body':'','query_params':{},'ip':f'192.168.1.{i%255}'})
+              elapsed = time.perf_counter()-start
               results['performance'] = {
-                  'total_requests':100,
+                  'total_requests':200,
                   'elapsed_seconds':round(elapsed,3),
-                  'requests_per_second':round(100/elapsed,2) if elapsed > 0 else 0,
-                  'average_latency_ms':round(elapsed/100*1000,2) if elapsed > 0 else 0
+                  'requests_per_second':round(200/elapsed,2) if elapsed>0 else 0,
+                  'average_latency_ms':round(elapsed/200*1000,2) if elapsed>0 else 0
               }
-              
-              # Overall
-              detection_keys = ['sql_injection','xss','path_traversal','command_injection','scanner_detection']
-              rates = [results[k]['detection_rate'] for k in detection_keys if k in results]
+
+              # ----- Overall -----
+              keys = ['sql_injection','xss','path_traversal','command_injection','scanner_detection']
+              rates = [results[k]['detection_rate'] for k in keys if k in results]
               if rates:
-                  avg_detection = round(sum(rates)/len(rates),2)
+                  avg = round(sum(rates)/len(rates),2)
                   fp = results.get('false_positives',{}).get('fp_rate',0)
                   rps = results.get('performance',{}).get('requests_per_second',0)
-                  grade = 'A' if avg_detection >= 95 else 'B' if avg_detection >= 85 else 'C' if avg_detection >= 70 else 'D'
                   results['overall'] = {
-                      'average_detection_rate': avg_detection,
-                      'false_positive_rate': fp,
-                      'requests_per_second': rps,
-                      'grade': grade
+                      'average_detection_rate':avg,
+                      'false_positive_rate':fp,
+                      'requests_per_second':rps,
+                      'grade':'A' if avg>=95 else 'B' if avg>=85 else 'C' if avg>=70 else 'D'
                   }
-          
+
+              results['status'] = 'success'
+          except Exception as e:
+              results['status'] = 'error'
+              results['error'] = str(e)
+              results['traceback'] = traceback.format_exc()
+
           results['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
           results['python_version'] = sys.version
-          
+
           with open('benchmark_results/waf_results.json','w') as f:
               json.dump(results, f, indent=2, default=str)
-          
-          print('WAF Results:', json.dumps(results.get('overall', {}), indent=2))
+
+          print(json.dumps(results.get('overall',{}), indent=2, default=str))
           " 2>&1 | tee -a benchmark_results/full_log.txt
-          WAF_EXIT=$?
-          echo "WAF exit code: $WAF_EXIT" >> benchmark_results/full_log.txt
         continue-on-error: true
 
       # ================================================================
-      # STEP 5: Unit Tests
+      # STEP 3: Crypto Benchmark
+      # ================================================================
+      - name: Crypto Benchmark
+        run: |
+          echo "" >> benchmark_results/full_log.txt
+          echo "=== CRYPTO BENCHMARK ===" >> benchmark_results/full_log.txt
+          set +e
+          python3 -c "
+          import json, time, sys, traceback
+
+          results = {'status': 'unknown', 'errors': []}
+
+          try:
+              from ironstack.defense import Crypto
+              crypto = Crypto()
+
+              # ----- Hash Speed -----
+              start = time.perf_counter()
+              for i in range(1000):
+                  crypto.hash_data(f'test data {i}')
+              elapsed = time.perf_counter()-start
+              results['hash_speed'] = {
+                  'total_hashes':1000,
+                  'elapsed_seconds':round(elapsed,3),
+                  'hashes_per_second':round(1000/elapsed,2) if elapsed>0 else 0
+              }
+
+              # ----- Encrypt Speed -----
+              start = time.perf_counter()
+              for i in range(100):
+                  crypto.encrypt(f'secret message number {i}')
+              elapsed = time.perf_counter()-start
+              results['encrypt_speed'] = {
+                  'total_encryptions':100,
+                  'elapsed_seconds':round(elapsed,3),
+                  'encryptions_per_second':round(100/elapsed,2) if elapsed>0 else 0
+              }
+
+              # ----- Password Strength -----
+              passwords = ['weak','password123','IronStack!2024','MyV3ryStr0ngP@ssw0rd!']
+              pw_results = []
+              for pw in passwords:
+                  strength = crypto.check_password_strength(pw)
+                  pw_results.append({'password_masked':pw[:2]+'***','strength':strength['strength'],'score':strength['score']})
+              results['password_strength'] = pw_results
+
+              # ----- HMAC Signing -----
+              start = time.perf_counter()
+              for i in range(500):
+                  crypto.sign(f'message {i}')
+              elapsed = time.perf_counter()-start
+              results['sign_speed'] = {
+                  'total_signatures':500,
+                  'elapsed_seconds':round(elapsed,3),
+                  'signatures_per_second':round(500/elapsed,2) if elapsed>0 else 0
+              }
+
+              # ----- Token Generation -----
+              start = time.perf_counter()
+              for i in range(500):
+                  crypto.generate_token(32)
+              elapsed = time.perf_counter()-start
+              results['token_speed'] = {
+                  'total_tokens':500,
+                  'elapsed_seconds':round(elapsed,3),
+                  'tokens_per_second':round(500/elapsed,2) if elapsed>0 else 0
+              }
+
+              results['status'] = 'success'
+          except Exception as e:
+              results['status'] = 'error'
+              results['error'] = str(e)
+              results['traceback'] = traceback.format_exc()
+
+          results['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+
+          with open('benchmark_results/crypto_results.json','w') as f:
+              json.dump(results, f, indent=2, default=str)
+
+          print(json.dumps(results, indent=2, default=str)[:500])
+          " 2>&1 | tee -a benchmark_results/full_log.txt
+        continue-on-error: true
+
+      # ================================================================
+      # STEP 4: Code Protection Benchmark
+      # ================================================================
+      - name: Code Protection Benchmark
+        run: |
+          echo "" >> benchmark_results/full_log.txt
+          echo "=== CODE PROTECTION BENCHMARK ===" >> benchmark_results/full_log.txt
+          set +e
+          python3 -c "
+          import json, time, sys, traceback, os, shutil
+          from pathlib import Path
+
+          results = {'status': 'unknown', 'errors': []}
+
+          try:
+              from ironstack.defense import CodeProtector
+
+              # Create temp project
+              tmp_dir = Path('/tmp/ironstack_bench_project')
+              if tmp_dir.exists():
+                  shutil.rmtree(tmp_dir)
+              tmp_dir.mkdir()
+              (tmp_dir / 'main.py').write_text('def main(): print(\"hello\")\nif __name__==\"__main__\": main()')
+              (tmp_dir / 'utils.py').write_text('def add(a,b): return a+b\ndef sub(a,b): return a-b')
+
+              protector = CodeProtector(mode='normal')
+
+              # ----- Protection Speed -----
+              start = time.perf_counter()
+              result = protector.protect(str(tmp_dir), output_dir=str(tmp_dir / 'protected'))
+              elapsed = time.perf_counter()-start
+
+              results['protection'] = {
+                  'files_protected':result.get('files_protected',0),
+                  'files_skipped':result.get('files_skipped',0),
+                  'errors':result.get('errors',0),
+                  'elapsed_seconds':round(elapsed,3),
+              }
+
+              # ----- Verify protected files exist -----
+              protected_dir = tmp_dir / 'protected'
+              py_files = list(protected_dir.rglob('*.py'))
+              results['protected_files_exist'] = len(py_files)
+
+              # Cleanup
+              shutil.rmtree(tmp_dir, ignore_errors=True)
+
+              results['status'] = 'success'
+          except Exception as e:
+              results['status'] = 'error'
+              results['error'] = str(e)
+              results['traceback'] = traceback.format_exc()
+
+          results['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+
+          with open('benchmark_results/protector_results.json','w') as f:
+              json.dump(results, f, indent=2, default=str)
+
+          print(json.dumps(results, indent=2, default=str)[:500])
+          " 2>&1 | tee -a benchmark_results/full_log.txt
+        continue-on-error: true
+
+      # ================================================================
+      # STEP 5: Validators Benchmark
+      # ================================================================
+      - name: Validators Benchmark
+        run: |
+          echo "" >> benchmark_results/full_log.txt
+          echo "=== VALIDATORS BENCHMARK ===" >> benchmark_results/full_log.txt
+          set +e
+          python3 -c "
+          import json, time, sys, traceback
+
+          results = {'status': 'unknown', 'errors': []}
+
+          try:
+              from ironstack.utils import validate_ip, validate_url, validate_email, validate_port, is_valid_ip
+
+              # ----- IP Validation -----
+              test_ips = {'valid':['192.168.1.1','10.0.0.1','8.8.8.8','255.255.255.255','0.0.0.0'],
+                          'invalid':['256.1.1.1','abc','999.999.999.999','1.2.3','']}
+              correct = 0
+              total = 0
+              for ip in test_ips['valid']:
+                  total+=1
+                  if is_valid_ip(ip): correct+=1
+              for ip in test_ips['invalid']:
+                  total+=1
+                  if not is_valid_ip(ip): correct+=1
+              results['ip_validation'] = {'accuracy':round(correct/total*100,2) if total>0 else 0,'total':total,'correct':correct}
+
+              # ----- URL Validation -----
+              test_urls = {'valid':['https://example.com','http://localhost:8080','https://api.test.com/v1/users'],
+                           'invalid':['not_a_url','','ftp://','h://test']}
+              correct = 0
+              total = 0
+              for url in test_urls['valid']:
+                  total+=1
+                  if validate_url(url)['valid']: correct+=1
+              for url in test_urls['invalid']:
+                  total+=1
+                  if not validate_url(url)['valid']: correct+=1
+              results['url_validation'] = {'accuracy':round(correct/total*100,2) if total>0 else 0,'total':total,'correct':correct}
+
+              # ----- Email Validation -----
+              test_emails = {'valid':['user@example.com','test@mail.co.uk','a@b.com'],
+                             'invalid':['not_an_email','@no.com','','test@']}
+              correct = 0
+              total = 0
+              for email in test_emails['valid']:
+                  total+=1
+                  if validate_email(email)['valid']: correct+=1
+              for email in test_emails['invalid']:
+                  total+=1
+                  if not validate_email(email)['valid']: correct+=1
+              results['email_validation'] = {'accuracy':round(correct/total*100,2) if total>0 else 0,'total':total,'correct':correct}
+
+              # ----- Performance -----
+              start = time.perf_counter()
+              for i in range(5000):
+                  is_valid_ip(f'192.168.{i%255}.{i%255}')
+              elapsed = time.perf_counter()-start
+              results['ip_validation_perf'] = {'total':5000,'elapsed':round(elapsed,3),'per_second':round(5000/elapsed,2) if elapsed>0 else 0}
+
+              results['status'] = 'success'
+          except Exception as e:
+              results['status'] = 'error'
+              results['error'] = str(e)
+              results['traceback'] = traceback.format_exc()
+
+          results['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+
+          with open('benchmark_results/validator_results.json','w') as f:
+              json.dump(results, f, indent=2, default=str)
+
+          print(json.dumps(results, indent=2, default=str)[:500])
+          " 2>&1 | tee -a benchmark_results/full_log.txt
+        continue-on-error: true
+
+      # ================================================================
+      # STEP 6: Anti-Cheat Benchmark (Basic)
+      # ================================================================
+      - name: Anti-Cheat Benchmark
+        run: |
+          echo "" >> benchmark_results/full_log.txt
+          echo "=== ANTI-CHEAT BENCHMARK ===" >> benchmark_results/full_log.txt
+          set +e
+          python3 -c "
+          import json, time, sys, traceback
+
+          results = {'status': 'unknown', 'errors': []}
+
+          try:
+              from ironstack.defense import AntiCheat
+
+              ac = AntiCheat(game_type='fps', sensitivity='medium')
+              ac.enable_all()
+
+              results['detectors_enabled'] = ac.get_active_detectors()
+
+              # Clean player
+              clean = {
+                  'aim_angle_x':1.5,'aim_angle_y':0.3,'aim_speed':120.0,
+                  'target_position':(100,200,50),'player_position':(50,100,25),
+                  'shot_fired':False,'hit_target':False,'target_id':'p2',
+                  'target_visible':True,'line_of_sight':True,'obstacles':[]
+              }
+              r_clean = ac.check_player('player_clean', clean)
+              results['clean_player'] = {'cheat_detected':r_clean.get('cheat_detected',None)}
+
+              # Suspicious player
+              suspicious = {
+                  'aim_angle_x':0.02,'aim_angle_y':0.01,'aim_speed':1500.0,
+                  'target_position':(101,199,49),'player_position':(50,100,25),
+                  'shot_fired':True,'hit_target':True,'target_id':'p2',
+                  'target_visible':True,'line_of_sight':True,'obstacles':[]
+              }
+              r_sus = ac.check_player('player_sus', suspicious)
+              results['suspicious_player'] = {
+                  'cheat_detected':r_sus.get('cheat_detected',None),
+                  'cheat_type':r_sus.get('cheat_type',None),
+                  'confidence':r_sus.get('confidence',None)
+              }
+
+              # Performance
+              start = time.perf_counter()
+              for i in range(1000):
+                  ac.check_player(f'player_{i}', clean)
+              elapsed = time.perf_counter()-start
+              results['performance'] = {'total':1000,'elapsed':round(elapsed,3),'per_second':round(1000/elapsed,2) if elapsed>0 else 0}
+
+              results['status'] = 'success'
+          except Exception as e:
+              results['status'] = 'error'
+              results['error'] = str(e)
+              results['traceback'] = traceback.format_exc()
+
+          results['timestamp'] = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+
+          with open('benchmark_results/anticheat_results.json','w') as f:
+              json.dump(results, f, indent=2, default=str)
+
+          print(json.dumps(results, indent=2, default=str)[:500])
+          " 2>&1 | tee -a benchmark_results/full_log.txt
+        continue-on-error: true
+
+      # ================================================================
+      # STEP 7: Unit Tests + Coverage
       # ================================================================
       - name: Unit Tests
         run: |
@@ -225,13 +491,10 @@ jobs:
             --ignore=tests/test_attack/test_hooker.py \
             --ignore=tests/test_attack/test_disassembler.py \
             --ignore=tests/test_attack/test_emulator.py \
-            -m "not integration" 2>&1 | tee -a benchmark_results/full_log.txt
-          TEST_EXIT=$?
-          set -e
-          echo "Test exit code: $TEST_EXIT" >> benchmark_results/full_log.txt
+            2>&1 | tee -a benchmark_results/full_log.txt
         continue-on-error: true
 
-      - name: Parse test results
+      - name: Parse Test Results
         run: |
           echo "" >> benchmark_results/full_log.txt
           echo "=== TEST PARSING ===" >> benchmark_results/full_log.txt
@@ -271,13 +534,13 @@ jobs:
         continue-on-error: true
 
       # ================================================================
-      # STEP 6: Combine everything into ONE SINGLE FILE
+      # STEP 8: Combine ALL results into ONE single file
       # ================================================================
-      - name: Combine final report
+      - name: Combine Final Report
         if: always()
         run: |
           echo "" >> benchmark_results/full_log.txt
-          echo "=== FINAL REPORT ===" >> benchmark_results/full_log.txt
+          echo "=== FINAL COMBINE ===" >> benchmark_results/full_log.txt
           set +e
           python3 -c "
           import json
@@ -291,9 +554,14 @@ jobs:
               'run_id': '${{ github.run_id }}',
               'run_url': '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
               'full_log': '',
-              'waf_results': {},
-              'unit_test_results': {},
-              'overall_status': 'UNKNOWN'
+              'waf': {},
+              'crypto': {},
+              'code_protection': {},
+              'validators': {},
+              'anti_cheat': {},
+              'unit_tests': {},
+              'overall_status': 'UNKNOWN',
+              'overall_summary': {}
           }
 
           # Load full log
@@ -301,59 +569,96 @@ jobs:
           if log_path.exists():
               final['full_log'] = log_path.read_text()
 
-          # Load WAF results
-          waf_path = Path('benchmark_results/waf_results.json')
-          if waf_path.exists():
-              with open(waf_path) as f:
-                  final['waf_results'] = json.load(f)
+          # Load each module result
+          modules = {
+              'waf': 'benchmark_results/waf_results.json',
+              'crypto': 'benchmark_results/crypto_results.json',
+              'code_protection': 'benchmark_results/protector_results.json',
+              'validators': 'benchmark_results/validator_results.json',
+              'anti_cheat': 'benchmark_results/anticheat_results.json',
+              'unit_tests': 'benchmark_results/unit_results.json',
+          }
 
-          # Load unit test results
-          test_path = Path('benchmark_results/unit_results.json')
-          if test_path.exists():
-              with open(test_path) as f:
-                  final['unit_test_results'] = json.load(f)
+          for name, path in modules.items():
+              p = Path(path)
+              if p.exists():
+                  with open(p) as f:
+                      final[name] = json.load(f)
 
-          # Determine overall status
-          waf_ok = final['waf_results'].get('overall',{}).get('grade') in ('A','B')
-          tests_ok = final['unit_test_results'].get('failed',0) == 0 and final['unit_test_results'].get('total',0) > 0
-          has_waf = bool(final['waf_results'].get('overall'))
-          has_tests = bool(final['unit_test_results'].get('total',0) > 0)
+          # Calculate overall summary
+          summary = {}
+          statuses = []
 
-          if has_waf and has_tests:
-              final['overall_status'] = 'PASS' if (waf_ok and tests_ok) else 'FAIL'
-          elif has_waf and not has_tests:
-              final['overall_status'] = 'PASS' if waf_ok else 'FAIL'
-          else:
-              final['overall_status'] = 'FAIL'
+          # WAF
+          waf_grade = final['waf'].get('overall',{}).get('grade','N/A')
+          waf_detection = final['waf'].get('overall',{}).get('average_detection_rate',0)
+          summary['waf_grade'] = waf_grade
+          summary['waf_detection_rate'] = waf_detection
+          statuses.append(waf_grade in ('A','B'))
 
-          # Write the ONE AND ONLY report file
+          # Crypto
+          summary['crypto_ok'] = final['crypto'].get('status') == 'success'
+          statuses.append(summary['crypto_ok'])
+
+          # Code Protection
+          prot = final['code_protection']
+          summary['code_protection_ok'] = prot.get('status') == 'success'
+          statuses.append(summary['code_protection_ok'])
+
+          # Validators
+          val = final['validators']
+          summary['validators_ok'] = val.get('status') == 'success'
+          statuses.append(summary['validators_ok'])
+
+          # Anti-Cheat
+          ac = final['anti_cheat']
+          summary['anticheat_ok'] = ac.get('status') == 'success'
+          statuses.append(summary['anticheat_ok'])
+
+          # Unit Tests
+          ut = final['unit_tests']
+          summary['tests_passed'] = ut.get('passed',0)
+          summary['tests_total'] = ut.get('total',0)
+          summary['coverage_percent'] = ut.get('coverage',0)
+          statuses.append(ut.get('failed',0) == 0 and ut.get('total',0) > 0)
+
+          final['overall_summary'] = summary
+          final['overall_status'] = 'PASS' if all(statuses) else 'FAIL'
+
+          # Write THE ONE FILE
           with open('benchmark_results/benchmark_report.json','w') as f:
               json.dump(final, f, indent=2, default=str)
 
-          print('Overall status:', final['overall_status'])
+          print('='*60)
+          print('FINAL RESULTS:')
+          print(f'  WAF:           Grade {waf_grade} ({waf_detection}%)')
+          print(f'  Crypto:        {\"PASS\" if summary[\"crypto_ok\"] else \"FAIL\"}')
+          print(f'  Code Protect:  {\"PASS\" if summary[\"code_protection_ok\"] else \"FAIL\"}')
+          print(f'  Validators:    {\"PASS\" if summary[\"validators_ok\"] else \"FAIL\"}')
+          print(f'  Anti-Cheat:    {\"PASS\" if summary[\"anticheat_ok\"] else \"FAIL\"}')
+          print(f'  Unit Tests:    {summary[\"tests_passed\"]}/{summary[\"tests_total\"]} ({summary[\"coverage_percent\"]}%)')
+          print(f'  OVERALL:       {final[\"overall_status\"]}')
+          print('='*60)
           " 2>&1 | tee -a benchmark_results/full_log.txt
 
       # ================================================================
-      # STEP 7: Save report to main branch (ALWAYS - even on failure)
+      # STEP 9: Save THE ONE FILE to main branch (ALWAYS)
       # ================================================================
-      - name: Save report to main branch
+      - name: Save Report to Main
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Only add the final report
           git add benchmark_results/benchmark_report.json
-          
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
           else
-            git commit -m "📊 Update benchmark report [skip ci]" || echo "Commit failed"
-            git push origin main || echo "Push failed (may be PR)"
+            git commit -m "📊 Full benchmark report [skip ci]" || echo "Commit failed"
+            git push origin main || echo "Push failed (OK for PR)"
           fi
 
       # ================================================================
-      # STEP 8: Comment on PR
+      # STEP 10: PR Comment
       # ================================================================
       - name: Comment on PR
         if: github.event_name == 'pull_request' && always()
@@ -362,21 +667,27 @@ jobs:
           script: |
             const fs = require('fs');
             const path = 'benchmark_results/benchmark_report.json';
-            if (!fs.existsSync(path)) {
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: '## ⚠️ Benchmark failed\n\nNo report generated. Check [workflow logs](' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ').'
-              });
-              return;
-            }
+            if (!fs.existsSync(path)) return;
             const r = JSON.parse(fs.readFileSync(path, 'utf8'));
-            const w = r.waf_results?.overall || {};
-            const t = r.unit_test_results || {};
+            const s = r.overall_summary || {};
+            const w = r.waf?.overall || {};
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 🛡️ IronStack Benchmark Results\n\n| Metric | Value |\n|--------|-------|\n| WAF Detection Rate | ${w.average_detection_rate||'N/A'}% |\n| WAF Grade | ${w.grade||'N/A'} |\n| False Positive Rate | ${w.false_positive_rate||'N/A'}% |\n| Performance | ${w.requests_per_second||'N/A'} req/s |\n| Unit Tests | ${t.passed||0}/${t.total||0} passed |\n| Code Coverage | ${t.coverage||0}% |\n| **Overall Status** | **${r.overall_status}** |\n\n[📄 Full Report](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/main/benchmark_results/benchmark_report.json)`
+              body: `## 🛡️ IronStack Full Benchmark Results
+
+            | Module | Status | Details |
+            |--------|--------|---------|
+            | WAF | ${s.waf_grade||'N/A'} | Detection: ${s.waf_detection_rate||0}%, Perf: ${w.requests_per_second||'N/A'} req/s |
+            | Crypto | ${s.crypto_ok?'✅':'❌'} | Encrypt/Hash/Sign |
+            | Code Protection | ${s.code_protection_ok?'✅':'❌'} | File obfuscation |
+            | Validators | ${s.validators_ok?'✅':'❌'} | IP/URL/Email |
+            | Anti-Cheat | ${s.anticheat_ok?'✅':'❌'} | Aimbot/Wallhack |
+            | Unit Tests | ${s.tests_passed||0}/${s.tests_total||0} | Coverage: ${s.coverage_percent||0}% |
+
+            **Overall Status: ${r.overall_status}**
+
+            [📄 Full Report](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/main/benchmark_results/benchmark_report.json)
+            `
             });

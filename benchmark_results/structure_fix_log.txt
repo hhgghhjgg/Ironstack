@@ -1,25 +1,19 @@
 ========== PROJECT STRUCTURE FIX ==========
-Run: Fri May 22 09:50:59 UTC 2026
+Run: Fri May 22 09:58:45 UTC 2026
 
 Checking root files...
-  🔄 ROOT/setup.py MISSING → copying from ironstack/setup.py
-  🔄 ROOT/setup.cfg MISSING → copying from ironstack/setup.cfg
-  🔄 ROOT/pyproject.toml MISSING → copying from ironstack/pyproject.toml
-  🔄 ROOT/requirements.txt MISSING → copying from ironstack/requirements.txt
-  🔄 ROOT/requirements-dev.txt MISSING → copying from ironstack/requirements-dev.txt
-  🔄 ROOT/Makefile MISSING → copying from ironstack/Makefile
+  ✅ ROOT/setup.py exists
+  ✅ ROOT/setup.cfg exists
+  ✅ ROOT/pyproject.toml exists
+  ✅ ROOT/requirements.txt exists
+  ✅ ROOT/requirements-dev.txt exists
+  ✅ ROOT/Makefile exists
   ✅ ROOT/README.md exists
   ❌ ROOT/LICENSE NOT FOUND anywhere
   ❌ ROOT/.gitignore NOT FOUND anywhere
   ❌ ROOT/CHANGELOG.md NOT FOUND anywhere
 
 Checking for misplaced files in ironstack/ ...
-  🚚 Moving ironstack/setup.py → root
-  🚚 Moving ironstack/setup.cfg → root
-  🚚 Moving ironstack/pyproject.toml → root
-  🚚 Moving ironstack/requirements.txt → root
-  🚚 Moving ironstack/requirements-dev.txt → root
-  🚚 Moving ironstack/Makefile → root
 
 Ensuring package structure...
   ✅ ironstack/ exists
@@ -38,12 +32,12 @@ Ensuring package structure...
   ✅ .github/workflows/ exists
 
 Ensuring __init__.py files...
-  📄 ironstack/__init__.py MISSING → creating empty init
-  📄 ironstack/defense/__init__.py MISSING → creating empty init
+  ✅ ironstack/__init__.py exists
+  ✅ ironstack/defense/__init__.py exists
   ✅ ironstack/defense/anti_cheat/__init__.py exists
   ✅ ironstack/attack/__init__.py exists
   ✅ ironstack/utils/__init__.py exists
-  📄 tests/__init__.py MISSING → creating empty init
+  ✅ tests/__init__.py exists
   ✅ tests/test_defense/__init__.py exists
   ✅ tests/test_attack/__init__.py exists
 

@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-05-22T09:51:24.718950",
-  "commit": "1ca46dc59c017f73ce63aba59d20a197471764df",
+  "timestamp": "2026-05-22T09:59:49.370128",
+  "commit": "b85337b8a20e07f49b1329373698d68fb8fe4927",
   "branch": "main",
-  "run_url": "https://github.com/hhgghhjgg/Ironstack/actions/runs/26280877805",
+  "run_url": "https://github.com/hhgghhjgg/Ironstack/actions/runs/26281256370",
   "waf_job": "success",
   "test_job": "success",
   "waf": {
     "errors": [],
     "warnings": [],
     "import_ok": false,
-    "import_error": "cannot import name 'WAF' from 'ironstack.defense' (/home/runner/work/Ironstack/Ironstack/ironstack/defense/__init__.py)",
-    "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\nImportError: cannot import name 'WAF' from 'ironstack.defense' (/home/runner/work/Ironstack/Ironstack/ironstack/defense/__init__.py)\n",
+    "import_error": "No module named 'ironstack.core'",
+    "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\n  File \"/home/runner/work/Ironstack/Ironstack/ironstack/__init__.py\", line 31, in <module>\n    from .core import IronStack\nModuleNotFoundError: No module named 'ironstack.core'\n",
     "sys_path": [
       "",
       "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python311.zip",
@@ -45,7 +45,7 @@
       "cli.py"
     ],
     "python": "3.11.15 (main, Mar  3 2026, 16:10:12) [GCC 13.3.0]",
-    "timestamp": "2026-05-22 09:51:12 UTC"
+    "timestamp": "2026-05-22 09:59:32 UTC"
   },
   "unit_tests": {
     "passed": 0,
@@ -54,7 +54,7 @@
     "coverage": 0,
     "total": 0,
     "errors_list": [],
-    "timestamp": "2026-05-22 09:51:14 UTC"
+    "timestamp": "2026-05-22 09:59:40 UTC"
   },
   "overall_status": "FAIL"
 }

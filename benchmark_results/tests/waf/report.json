@@ -1,17 +1,28 @@
 {
-  "timestamp": "2026-05-22T09:23:39.093158",
-  "commit": "957af219ca8a4f54ff73cc2fe2adf524ea98d74f",
+  "timestamp": "2026-05-22T09:38:28.713533",
+  "commit": "c92c3cc495631500e07034e2ee7b9b318a7e1798",
   "branch": "main",
-  "run_id": "26279616196",
+  "run_id": "26280300849",
+  "run_url": "https://github.com/hhgghhjgg/Ironstack/actions/runs/26280300849",
+  "waf_job_status": "success",
+  "test_job_status": "success",
   "waf": {
-    "error": "No results"
+    "import_error": "cannot import name 'WAF' from 'ironstack.defense' (unknown location)",
+    "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 9, in <module>\nImportError: cannot import name 'WAF' from 'ironstack.defense' (unknown location)\n",
+    "errors": [
+      "Import error: cannot import name 'WAF' from 'ironstack.defense' (unknown location)"
+    ],
+    "python_version": "3.11.15 (main, Mar  3 2026, 16:10:12) [GCC 13.3.0]",
+    "timestamp": "2026-05-22 09:38:17 UTC"
   },
   "unit_tests": {
     "passed": 0,
     "failed": 0,
     "errors": 0,
     "coverage": 0,
-    "total": 0
+    "total": 0,
+    "errors_list": [],
+    "timestamp": "2026-05-22 09:38:20 UTC"
   },
-  "overall_status": "PASS"
+  "overall_status": "UNKNOWN"
 }

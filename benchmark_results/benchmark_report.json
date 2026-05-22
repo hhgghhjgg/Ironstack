@@ -1,62 +1,11 @@
 {
-  "timestamp": "2026-05-22T13:12:30.958460",
-  "commit": "5fcae25c4303069dcb7e07fbc8ba122e5b659e18",
+  "timestamp": "2026-05-22T13:45:46.403315",
+  "commit": "f0feab33c12541ffcf51c8c941064c865f9dd5f0",
   "branch": "main",
-  "run_id": "26289815067",
-  "run_url": "https://github.com/hhgghhjgg/Ironstack/actions/runs/26289815067",
-  "structure_check": "=== PROJECT STRUCTURE CHECK ===\n\u2705 setup.py exists\n\u2705 setup.cfg exists\n\u2705 pyproject.toml exists\n\u2705 requirements.txt exists\n\u2705 requirements-dev.txt exists\n\u2705 Makefile exists\n\u2705 README.md exists\n\u2705 ironstack/ exists\n\u2705 ironstack/defense/ exists\n\u2705 ironstack/defense/anti_cheat/ exists\n\u2705 ironstack/attack/ exists\n\u2705 ironstack/utils/ exists\n\u2705 tests/ exists\n\u2705 tests/test_defense/ exists\n\u2705 tests/test_attack/ exists\n\u2705 examples/ exists\n\u274c docs/ MISSING\n\u2705 scripts/ exists\n\u2705 .github/ exists\n\u2705 .github/workflows/ exists\n\u2705 ironstack/__init__.py exists (non\u2011empty)\n\u2705 ironstack/defense/__init__.py exists (non\u2011empty)\n\u2705 ironstack/defense/anti_cheat/__init__.py exists (non\u2011empty)\n\u2705 ironstack/attack/__init__.py exists (non\u2011empty)\n\u2705 ironstack/utils/__init__.py exists (non\u2011empty)\n\u2705 tests/__init__.py exists (non\u2011empty)\n\u2705 tests/test_defense/__init__.py exists (non\u2011empty)\n\u2705 tests/test_attack/__init__.py exists (non\u2011empty)\n",
-  "install_log": "=== INSTALL LOG ===\nObtaining file:///home/runner/work/Ironstack/Ironstack\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Checking if build backend supports build_editable: started\n  Checking if build backend supports build_editable: finished with status 'done'\n  Getting requirements to build editable: started\n  Getting requirements to build editable: finished with status 'error'\n  error: subprocess-exited-with-error\n  \n  \u00d7 Getting requirements to build editable did not run successfully.\n  \u2502 exit code: 1\n  \u2570\u2500> [36 lines of output]\n      Traceback (most recent call last):\n        File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py\", line 389, in <module>\n          main()\n        File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py\", line 373, in main\n          json_out[\"return_val\"] = hook(**hook_input[\"kwargs\"])\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py\", line 157, in get_requires_for_build_editable\n          return hook(config_settings)\n                 ^^^^^^^^^^^^^^^^^^^^^\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/build_meta.py\", line 481, in get_requires_for_build_editable\n          return self.get_requires_for_build_wheel(config_settings)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/build_meta.py\", line 333, in get_requires_for_build_wheel\n          return self._get_build_requires(config_settings, requirements=[])\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/build_meta.py\", line 301, in _get_build_requires\n          self.run_setup()\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/build_meta.py\", line 317, in run_setup\n          exec(code, locals())\n        File \"<string>\", line 87, in <module>\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/__init__.py\", line 114, in setup\n          _install_setup_requires(attrs)\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/__init__.py\", line 85, in _install_setup_requires\n          dist.parse_config_files(ignore_option_errors=True)\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/dist.py\", line 756, in parse_config_files\n          self._parse_config_files(filenames=inifiles)\n        File \"/tmp/pip-build-env-3mw7e0e8/overlay/lib/python3.11/site-packages/setuptools/dist.py\", line 589, in _parse_config_files\n          parser.read_file(reader)\n        File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/configparser.py\", line 734, in read_file\n          self._read(f, source)\n        File \"/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/configparser.py\", line 1134, in _read\n          raise e\n      configparser.ParsingError: Source contains parsing errors: 'setup.cfg'\n          [line 138]: '/(\\n'\n          [line 149]: ')/\\n'\n          [line 150]: \"'''\\n\"\n      [end of output]\n  \n  note: This error originates from a subprocess, and is likely not a problem with pip.\nERROR: Failed to build 'file:///home/runner/work/Ironstack/Ironstack' when getting requirements to build editable\n",
-  "waf": {
-    "errors": [],
-    "warnings": [],
-    "raw_log": "=== WAF BENCHMARK ===\n",
-    "import_ok": false,
-    "import_error": "No module named 'ironstack.core'",
-    "traceback": "Traceback (most recent call last):\n  File \"<string>\", line 5, in <module>\n  File \"/home/runner/work/Ironstack/Ironstack/ironstack/__init__.py\", line 31, in <module>\n    from .core import IronStack\nModuleNotFoundError: No module named 'ironstack.core'\n",
-    "sys_path": [
-      "",
-      "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python311.zip",
-      "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11",
-      "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/lib-dynload",
-      "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages"
-    ],
-    "cwd": "/home/runner/work/Ironstack/Ironstack",
-    "files_in_cwd": [
-      "requirements.txt",
-      "benchmark_results",
-      ".git",
-      ".github",
-      "Makefile",
-      "setup.py",
-      "tests",
-      "pyproject.toml",
-      "requirements-dev.txt",
-      "setup.cfg",
-      "scripts",
-      "ironstack",
-      "README.md",
-      "examples"
-    ],
-    "files_in_ironstack": [
-      "attack",
-      "__pycache__",
-      "defense",
-      "utils",
-      "__init__.py",
-      "ironstack",
-      "cli.py"
-    ],
-    "python": "3.11.15 (main, Mar  3 2026, 16:10:12) [GCC 13.3.0]",
-    "timestamp": "2026-05-22 13:12:27 UTC"
-  },
-  "unit_tests": {
-    "passed": 0,
-    "failed": 0,
-    "errors": 0,
-    "coverage": 0,
-    "total": 0,
-    "raw_log": "=== UNIT TESTS ===\nCollecting pytest\n  Downloading pytest-9.0.3-py3-none-any.whl.metadata (7.6 kB)\nCollecting pytest-cov\n  Downloading pytest_cov-7.1.0-py3-none-any.whl.metadata (32 kB)\nCollecting iniconfig>=1.0.1 (from pytest)\n  Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)\nCollecting packaging>=22 (from pytest)\n  Using cached packaging-26.2-py3-none-any.whl.metadata (3.5 kB)\nCollecting pluggy<2,>=1.5 (from pytest)\n  Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)\nCollecting pygments>=2.7.2 (from pytest)\n  Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)\nCollecting coverage>=7.10.6 (from coverage[toml]>=7.10.6->pytest-cov)\n  Downloading coverage-7.14.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.5 kB)\nDownloading pytest-9.0.3-py3-none-any.whl (375 kB)\nDownloading pluggy-1.6.0-py3-none-any.whl (20 kB)\nDownloading pytest_cov-7.1.0-py3-none-any.whl (22 kB)\nDownloading coverage-7.14.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (252 kB)\nDownloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)\nUsing cached packaging-26.2-py3-none-any.whl (100 kB)\nDownloading pygments-2.20.0-py3-none-any.whl (1.2 MB)\n   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 1.2/1.2 MB 37.9 MB/s  0:00:00\nInstalling collected packages: pygments, pluggy, packaging, iniconfig, coverage, pytest, pytest-cov\n\nSuccessfully installed coverage-7.14.0 iniconfig-2.3.0 packaging-26.2 pluggy-1.6.0 pygments-2.20.0 pytest-9.0.3 pytest-cov-7.1.0\nERROR: /home/runner/work/Ironstack/Ironstack/setup.cfg:138: unexpected line: '/('\n\n",
-    "timestamp": "2026-05-22 13:12:30 UTC"
-  },
+  "run_url": "https://github.com/hhgghhjgg/Ironstack/actions/runs/26291480104",
+  "fix_log": "=== SAFE STRUCTURE FIX ===\n\nNested ironstack/ironstack/ found \u2013 moving contents up...\n  \u26a0\ufe0f ironstack/__init__.py already exists (non\u2011empty) \u2013 NOT overwriting\n  \ud83d\ude9a Moving ironstack/ironstack/config.py \u2192 ironstack/config.py\n  \ud83d\ude9a Moving ironstack/ironstack/core.py \u2192 ironstack/core.py\n  \u2705 ironstack/defense/ already exists \u2013 merging contents\n    \ud83d\ude9a Moving ironstack/ironstack/defense/bunkerweb_connector.py \u2192 ironstack/defense/bunkerweb_connector.py\n    \ud83d\ude9a Moving ironstack/ironstack/defense/protector.py \u2192 ironstack/defense/protector.py\n    \ud83d\ude9a Moving ironstack/ironstack/defense/waf.py \u2192 ironstack/defense/waf.py\n  \ud83d\ude9a Moving ironstack/ironstack/exceptions.py \u2192 ironstack/exceptions.py\n  \ud83d\ude9a Moving ironstack/ironstack/logging_config.py \u2192 ironstack/logging_config.py\n  \ud83d\uddd1\ufe0f Removed nested ironstack/ironstack/\n  \u2705 ironstack/__init__.py is non\u2011empty\n\n  \ud83d\udee0\ufe0f setup.cfg has broken lines \u2013 removing problematic section\n",
+  "install_log": "",
+  "waf": {},
+  "unit_tests": {},
   "overall_status": "FAIL"
 }
